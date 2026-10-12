@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0f172a">
+<link rel="manifest" href="manifest.webmanifest">
+<title>POP Catchment Analyzer</title>
+<style>
+:root{
+  --bg:#0f172a;--panel:#111827;--card:#172033;--line:#334155;--text:#f8fafc;
+  --muted:#94a3b8;--ok:#34d399;--bad:#fb7185;--warn:#f59e0b;--accent:#38bdf8;
+}
+*{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI","Noto Sans Thai",sans-serif}
+button,input,select{font:inherit}
+button{min-height:40px;border:1px solid #475569;border-radius:8px;background:#1e293b;color:white;padding:7px 10px;font-weight:600}
+button.primary{background:#075985;border-color:#0ea5e9}
+button.good{background:#065f46;border-color:#10b981}
+input,select{width:100%;min-height:40px;border:1px solid #475569;border-radius:8px;background:#0b1220;color:white;padding:7px 9px}
+.app{position:fixed;inset:0}
+.panel{position:absolute;left:0;top:0;bottom:0;width:360px;background:var(--panel);border-right:1px solid var(--line);overflow-y:auto;overflow-x:hidden;padding:12px 12px 36px}
+.main{position:absolute;left:360px;right:0;top:0;bottom:0;display:flex;flex-direction:column;overflow:hidden}
+.mapTop{flex:none;min-height:48px;padding:8px 10px;background:#0b1220;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.mapWrap{position:relative;flex:1;min-height:0;background:#dbe4e1}
+#map{position:absolute;inset:0}
+.mapCtl{position:absolute;right:10px;top:10px;z-index:20;display:flex;flex-direction:column;gap:5px}
+.mapCtl button{width:46px;height:46px;padding:0;background:rgba(15,23,42,.92)}
+.mapInfo{position:absolute;left:10px;bottom:10px;z-index:20;background:rgba(15,23,42,.94);border:1px solid #475569;border-radius:8px;padding:7px 9px;font-size:11px;max-width:65%}
+.footer{flex:none;font-size:10px;color:#94a3b8;padding:5px 9px;background:#0b1220;border-top:1px solid var(--line)}
+h1{font-size:18px;margin:0}.muted,.small{font-size:11px;color:var(--muted);line-height:1.45}
+.brand{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.badge{font-size:11px;padding:4px 7px;border-radius:999px;background:#27364a}
+.status{margin-top:7px;padding:7px 8px;border:1px solid #475569;border-radius:8px;background:#0b1220;font-size:11px;line-height:1.45}
+.status.ok{border-color:#166534;color:#bbf7d0}.status.bad{border-color:#9f1239;color:#fecdd3}.status.warn{border-color:#92400e;color:#fde68a}
+.section{border-top:1px solid var(--line);margin-top:11px;padding-top:10px}.section h2{font-size:13px;margin:0 0 7px}
+.row{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:6px}.row>*{min-width:0}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.checkGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+.check{display:flex;align-items:center;gap:4px;background:#0b1220;border:1px solid #2d3a50;border-radius:7px;padding:6px;font-size:11px}
+.check input{width:17px;height:17px;min-height:17px;padding:0}
+.dot{width:8px;height:8px;border-radius:50%}
+.quick{position:sticky;top:0;z-index:40;background:var(--panel);display:grid;grid-template-columns:repeat(5,1fr);gap:4px;padding:6px 0}
+.quick button{font-size:10px;min-height:32px;padding:4px 2px}
+details{margin-top:6px;background:#0b1220;border:1px solid #2d3a50;border-radius:7px;padding:6px 8px}
+summary{cursor:pointer;font-size:11px;color:#cbd5e1;font-weight:600}
+table{width:100%;border-collapse:collapse;font-size:10px}th,td{padding:5px 3px;border-bottom:1px solid #29364a;text-align:right}th:first-child,td:first-child{text-align:left}
+.searchResults{max-height:130px;overflow:auto}.searchResults button{width:100%;text-align:left;margin-top:3px;font-size:10px;line-height:1.3}
+.hidden{display:none!important}
+@media(max-width:720px){.panel{width:320px}.main{left:320px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="panel">
+    <div class="brand">
+      <div><h1>POP Catchment Analyzer</h1><div class="muted">Web App V1 • Local POP on tablet</div></div>
+      <span class="badge">LONGDO</span>
+    </div>
+
+    <div class="quick">
+      <button data-go="secApi">API</button><button data-go="secSite">Site</button><button data-go="secRadius">Radius</button><button data-go="secDrive">Time</button><button data-go="secPop">POP</button>
+    </div>
+
+    <section id="secApi" class="section">
+      <h2>1) Longdo API</h2>
+      <input id="apiKey" type="password" placeholder="Longdo API Key" autocomplete="off">
+      <div class="row"><button id="connectBtn" class="primary">เชื่อม Longdo</button><label class="check"><input id="rememberKey" type="checkbox" checked>จำ Key เครื่องนี้</label></div>
+      <div id="apiStatus" class="status">ยังไม่ได้เชื่อม</div>
+    </section>
+
+    <section id="secSite" class="section">
+      <h2>2) Site</h2>
+      <input id="siteSearch" placeholder="ค้นหาสถานที่">
+      <div class="row"><button id="searchBtn">ค้นหา</button><button id="centerSiteBtn" class="good">ใช้จุดกลางแผนที่</button></div>
+      <div id="searchResults" class="searchResults"></div>
+      <input id="siteName" value="My Site" style="margin-top:6px">
+      <details>
+        <summary>Lat / Lon</summary>
+        <div class="two" style="margin-top:6px"><input id="lat" type="number" step=".000001" value="13.756300"><input id="lon" type="number" step=".000001" value="100.501800"></div>
+        <div class="row"><button id="setSiteBtn">ใช้ Lat/Lon</button><button id="goSiteBtn">กลับ Site</button></div>
+      </details>
+      <div id="siteStatus" class="status">ยังไม่ได้ตั้ง Site</div>
+    </section>
+
+    <section id="secRadius" class="section">
+      <h2>3) Radius</h2>
+      <div id="radiusChecks" class="checkGrid">
+        <label class="check"><input type="checkbox" data-r="1"><span class="dot" style="background:#64748b"></span>1 km</label>
+        <label class="check"><input type="checkbox" data-r="3"><span class="dot" style="background:#0f766e"></span>3 km</label>
+        <label class="check"><input type="checkbox" data-r="5" checked><span class="dot" style="background:#ca8a04"></span>5 km</label>
+        <label class="check"><input type="checkbox" data-r="10"><span class="dot" style="background:#ea580c"></span>10 km</label>
+        <label class="check"><input type="checkbox" data-r="15"><span class="dot" style="background:#b91c1c"></span>15 km</label>
+      </div>
+    </section>
+
+    <section id="secDrive" class="section">
+      <h2>4) Longdo Time Span</h2>
+      <div id="driveChecks" class="checkGrid">
+        <label class="check"><input type="checkbox" data-d="5"><span class="dot" style="background:#00c853"></span>5 min</label>
+        <label class="check"><input type="checkbox" data-d="10" checked><span class="dot" style="background:#00b8d4"></span>10 min</label>
+        <label class="check"><input type="checkbox" data-d="15"><span class="dot" style="background:#2962ff"></span>15 min</label>
+        <label class="check"><input type="checkbox" data-d="20"><span class="dot" style="background:#aa00ff"></span>20 min</label>
+        <label class="check"><input type="checkbox" data-d="30"><span class="dot" style="background:#d50000"></span>30 min</label>
+      </div>
+      <div class="row"><button id="calcDriveBtn" class="good">คำนวณ Time Span</button><label class="check"><input id="trafficChk" type="checkbox">Traffic</label></div>
+      <div id="driveStatus" class="status">ยังไม่ได้คำนวณ</div>
+      <div class="small">ตอนนี้ใช้คำว่า Time Span ก่อน จนกว่าเราจะตรวจเส้นทางจริงตาม Site แล้ว</div>
+    </section>
+
+    <section id="secPop" class="section">
+      <h2>5) POP จาก Tablet</h2>
+      <div class="small">รับ CSV/JSON รูปแบบ lat, lon, pop, house • ไฟล์อยู่ใน Tablet และเก็บ cache ใน browser เครื่องนี้</div>
+      <div class="row"><button id="importPopBtn">เลือกไฟล์ POP</button><button id="clearPopBtn">ล้าง POP</button></div>
+      <input id="popFile" class="hidden" type="file" accept=".csv,.json,text/csv,application/json">
+      <div id="popStatus" class="status">ยังไม่มีข้อมูล POP</div>
+      <table style="margin-top:6px">
+        <tbody>
+          <tr><td>Source</td><td id="srcVal">—</td></tr>
+          <tr><td>Points</td><td id="ptsVal">0</td></tr>
+          <tr><td>Total POP</td><td id="popVal">—</td></tr>
+          <tr><td>Total บ้าน</td><td id="houseVal">—</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="section">
+      <h2>6) Catchment Summary</h2>
+      <table>
+        <thead><tr><th>Catchment</th><th>POP</th><th>บ้าน</th></tr></thead>
+        <tbody id="summaryBody"><tr><td colspan="3" style="text-align:center;color:#94a3b8">ยังไม่มี POP</td></tr></tbody>
+      </table>
+    </section>
+  </aside>
+
+  <main class="main">
+    <div class="mapTop"><b id="mapSiteName">My Site</b><span id="coordBadge" class="badge">13.756300, 100.501800</span><span id="mapState" class="badge">NOT CONNECTED</span></div>
+    <div class="mapWrap">
+      <div id="map"></div>
+      <div class="mapCtl"><button id="zoomIn">+</button><button id="zoomOut">−</button><button id="siteBtn" style="font-size:11px">SITE</button></div>
+      <div id="mapInfo" class="mapInfo">ใส่ Longdo API Key แล้วกดเชื่อม</div>
+    </div>
+    <div class="footer">POP file stays on this tablet/browser • Longdo map/services use your Longdo API key</div>
+  </main>
+</div>
+
+<script>
+(()=>{"use strict";
+const $=id=>document.getElementById(id), qsa=s=>Array.from(document.querySelectorAll(s));
+const RC={1:"#64748b",3:"#0f766e",5:"#ca8a04",10:"#ea580c",15:"#b91c1c"};
+const DC={5:"#00c853",10:"#00b8d4",15:"#2962ff",20:"#aa00ff",30:"#d50000"};
+const S={map:null,key:"",connected:false,site:{name:"My Site",lat:13.7563,lon:100.5018},marker:null,radius:[],drive:[],drivePoly:{},pop:[],popSource:""};
+
+function status(id,msg,kind=""){const e=$(id);e.textContent=msg;e.className="status"+(kind?" "+kind:"")}
+function info(msg){$("mapInfo").textContent=msg}
+function fmt(n){return Math.round(Number(n)||0).toLocaleString("th-TH")}
+function rgba(hex,a){const h=hex.slice(1);return `rgba(${parseInt(h.slice(0,2),16)},${parseInt(h.slice(2,4),16)},${parseInt(h.slice(4,6),16)},${a})`}
+function clear(arr){if(!S.map)return;while(arr.length){const o=arr.pop();try{S.map.Overlays.remove(o)}catch(e){}}}
+function jsonp(url,params,timeout=16000){return new Promise((resolve,reject)=>{const cb="__ld"+Date.now()+Math.random().toString(36).slice(2),sc=document.createElement("script");let done=false;const t=setTimeout(()=>end(new Error("timeout")),timeout);function end(err,d){if(done)return;done=true;clearTimeout(t);try{delete window[cb]}catch(e){}sc.remove();err?reject(err):resolve(d)}window[cb]=d=>end(null,d);sc.src=url+"?"+new URLSearchParams({...params,callback:cb});sc.onerror=()=>end(new Error("network error"));document.head.appendChild(sc)})}
+
+async function connect(){
+  const k=$("apiKey").value.trim();if(!k){status("apiStatus","กรุณาใส่ Key","bad");return}
+  status("apiStatus","กำลังเชื่อม…");
+  try{
+    if(!window.longdo||!longdo.Map){
+      await new Promise((res,rej)=>{const sc=document.createElement("script"),t=setTimeout(()=>rej(new Error("Map timeout")),15000);sc.src="https://api.longdo.com/map/?key="+encodeURIComponent(k);sc.onload=()=>{clearTimeout(t);window.longdo&&longdo.Map?res():rej(new Error("ไม่พบ longdo.Map"))};sc.onerror=()=>{clearTimeout(t);rej(new Error("โหลด Longdo ไม่สำเร็จ"))};document.head.appendChild(sc)});
+    }
+    S.key=k;if($("rememberKey").checked)localStorage.setItem("longdoKey",k);else localStorage.removeItem("longdoKey");
+    S.map=new longdo.Map({placeholder:$("map"),lastView:false});S.map.zoom(12,false);S.map.location({lat:S.site.lat,lon:S.site.lon},false);
+    S.connected=true;$("mapState").textContent="LONGDO LIVE";status("apiStatus","เชื่อมสำเร็จ","ok");setSite(S.site.lat,S.site.lon,S.site.name,false);
+    info("พร้อมใช้งาน");
+  }catch(e){status("apiStatus","เชื่อมไม่ได้: "+e.message,"bad");$("mapState").textContent="CONNECT FAIL"}
+}
+function setSite(lat,lon,name,move=true){
+  S.site={lat:+lat,lon:+lon,name:(name||"My Site").trim()||"My Site"};
+  $("lat").value=S.site.lat.toFixed(6);$("lon").value=S.site.lon.toFixed(6);$("siteName").value=S.site.name;
+  $("mapSiteName").textContent=S.site.name;$("coordBadge").textContent=`${S.site.lat.toFixed(6)}, ${S.site.lon.toFixed(6)}`;
+  if(S.map){if(S.marker)try{S.map.Overlays.remove(S.marker)}catch(e){};S.marker=new longdo.Marker({lat:S.site.lat,lon:S.site.lon},{title:S.site.name});S.map.Overlays.add(S.marker);if(move){S.map.location({lat:S.site.lat,lon:S.site.lon});S.map.zoom(12)}}
+  clear(S.drive);S.drivePoly={};drawRadius();refreshSummary();status("siteStatus","Site พร้อม","ok")
+}
+function circle(lat,lon,km,steps=100){const out=[],R=6371,p1=lat*Math.PI/180,l1=lon*Math.PI/180,d=km/R;for(let i=0;i<steps;i++){const b=2*Math.PI*i/steps,p2=Math.asin(Math.sin(p1)*Math.cos(d)+Math.cos(p1)*Math.sin(d)*Math.cos(b)),l2=l1+Math.atan2(Math.sin(b)*Math.sin(d)*Math.cos(p1),Math.cos(d)-Math.sin(p1)*Math.sin(p2));out.push({lat:p2*180/Math.PI,lon:l2*180/Math.PI})}return out}
+function drawRadius(){if(!S.map)return;clear(S.radius);qsa("#radiusChecks input:checked").forEach(x=>{const r=+x.dataset.r,c=RC[r],pg=new longdo.Polygon(circle(S.site.lat,S.site.lon,r),{lineColor:c,lineWidth:1,lineStyle:longdo.LineStyle.Dashed,fillColor:rgba(c,.03)});S.map.Overlays.add(pg);S.radius.push(pg)})}
+function normPoly(p){if(!Array.isArray(p))return[];return p.map(x=>Array.isArray(x)?{lon:+x[0],lat:+x[1]}:{lon:+(x.lon??x.longitude??x.x),lat:+(x.lat??x.latitude??x.y)}).filter(x=>Number.isFinite(x.lat)&&Number.isFinite(x.lon))}
+async function calcDrive(){if(!S.connected){status("driveStatus","เชื่อม Longdo ก่อน","bad");return}const mins=qsa("#driveChecks input:checked").map(x=>+x.dataset.d);if(!mins.length){status("driveStatus","เลือกเวลาอย่างน้อย 1 ค่า","warn");return}clear(S.drive);S.drivePoly={};$("calcDriveBtn").disabled=true;try{for(const m of mins){status("driveStatus",`กำลังคำนวณ ${m} นาที…`);const d=await jsonp("https://api.longdo.com/RouteService/json/span/get",{flon:S.site.lon,flat:S.site.lat,span:(m*60)+"s",flag:2,key:S.key},20000);const pts=normPoly(d&&d.polygon);if(pts.length<3)throw new Error(`${m} นาที: ไม่ได้ polygon`);S.drivePoly[m]=pts;const c=DC[m],pg=new longdo.Polygon(pts,{lineColor:c,lineWidth:1,lineStyle:longdo.LineStyle.Dashed,fillColor:rgba(c,.18)});S.map.Overlays.add(pg);S.drive.push(pg)}status("driveStatus",`สำเร็จ ${mins.join("/")} นาที`,"ok");refreshSummary()}catch(e){status("driveStatus","หยุด: "+e.message,"bad")}finally{$("calcDriveBtn").disabled=false}}
+function traffic(on){if(!S.map)return;try{on?S.map.Layers.add(longdo.Layers.TRAFFIC):S.map.Layers.remove(longdo.Layers.TRAFFIC)}catch(e){$("trafficChk").checked=false}}
+
+async function search(){if(!S.connected){status("siteStatus","เชื่อม Longdo ก่อน","bad");return}const kw=$("siteSearch").value.trim();if(!kw)return;$("searchResults").innerHTML='<div class="small">กำลังค้นหา…</div>';try{const d=await jsonp("https://search.longdo.com/mapsearch/json/search",{keyword:kw,lon:S.site.lon,lat:S.site.lat,limit:6,locale:"th",key:S.key});const a=d&&Array.isArray(d.data)?d.data:[];$("searchResults").innerHTML="";for(const x of a){const b=document.createElement("button");b.textContent=`${x.name||""} — ${x.address||""}`;b.onclick=()=>setSite(+x.lat,+x.lon,x.name||kw,true);$("searchResults").appendChild(b)}if(!a.length)$("searchResults").innerHTML='<div class="small">ไม่พบผลลัพธ์</div>'}catch(e){$("searchResults").innerHTML='<div class="small">ค้นหาไม่สำเร็จ</div>'}}
+
+function parseCSV(raw){const lines=raw.replace(/^\uFEFF/,"").replace(/\r/g,"").split("\n").filter(x=>x.trim());if(lines.length<2)throw new Error("CSV ไม่มีข้อมูล");function split(s){let a=[],c="",q=false;for(let i=0;i<s.length;i++){const ch=s[i];if(ch==='"'){if(q&&s[i+1]==='"'){c+='"';i++}else q=!q}else if(ch===","&&!q){a.push(c);c=""}else c+=ch}a.push(c);return a.map(x=>x.trim())}const h=split(lines[0]).map(x=>x.toLowerCase());return lines.slice(1).map(l=>{const c=split(l),o={};h.forEach((k,i)=>o[k]=c[i]);return o})}
+function normPoint(o){const lat=+(o.lat??o.latitude),lon=+(o.lon??o.lng??o.longitude),pop=+String(o.pop??o.population??"").replace(/,/g,""),hv=o.house??o.houses??o.home??o.homes,house=hv==null||hv===""?null:+String(hv).replace(/,/g,"");return Number.isFinite(lat)&&Number.isFinite(lon)&&Number.isFinite(pop)?{lat,lon,pop,house:Number.isFinite(house)?house:null}:null}
+
+function openDB(){return new Promise((res,rej)=>{const r=indexedDB.open("popCatchmentDB",1);r.onupgradeneeded=()=>{const db=r.result;if(!db.objectStoreNames.contains("data"))db.createObjectStore("data")};r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
+async function dbSet(key,val){const db=await openDB();return new Promise((res,rej)=>{const tx=db.transaction("data","readwrite");tx.objectStore("data").put(val,key);tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error)})}
+async function dbGet(key){const db=await openDB();return new Promise((res,rej)=>{const r=db.transaction("data").objectStore("data").get(key);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
+async function dbDel(key){const db=await openDB();return new Promise((res,rej)=>{const r=db.transaction("data","readwrite").objectStore("data").delete(key);r.onsuccess=()=>res();r.onerror=()=>rej(r.error)})}
+
+async function importPop(file){status("popStatus","กำลังอ่านไฟล์…");const raw=await file.text();let rows;if(file.name.toLowerCase().endsWith(".json")){const j=JSON.parse(raw);rows=Array.isArray(j)?j:(j.points||[])}else rows=parseCSV(raw);const pts=rows.map(normPoint).filter(Boolean);if(!pts.length)throw new Error("ไม่พบ lat/lon/pop");S.pop=pts;S.popSource=file.name;status("popStatus",`อ่านได้ ${fmt(pts.length)} จุด • กำลังเก็บใน Tablet…`);await dbSet("pop",{source:file.name,points:pts});updatePopUI();refreshSummary();status("popStatus",`พร้อมใช้ ${fmt(pts.length)} จุด • เก็บใน Tablet แล้ว`,"ok")}
+function updatePopUI(){const pop=S.pop.reduce((a,p)=>a+p.pop,0),houses=S.pop.filter(p=>p.house!=null),house=houses.reduce((a,p)=>a+p.house,0);$("srcVal").textContent=S.popSource||"—";$("ptsVal").textContent=fmt(S.pop.length);$("popVal").textContent=S.pop.length?fmt(pop):"—";$("houseVal").textContent=houses.length?fmt(house):"—"}
+function hav(a,b){const R=6371,dp=(b.lat-a.lat)*Math.PI/180,dl=(b.lon-a.lon)*Math.PI/180,p1=a.lat*Math.PI/180,p2=b.lat*Math.PI/180,h=Math.sin(dp/2)**2+Math.cos(p1)*Math.cos(p2)*Math.sin(dl/2)**2;return 2*R*Math.asin(Math.sqrt(h))}
+function inside(pt,poly){let yes=false;for(let i=0,j=poly.length-1;i<poly.length;j=i++){const xi=poly[i].lon,yi=poly[i].lat,xj=poly[j].lon,yj=poly[j].lat;if(((yi>pt.lat)!=(yj>pt.lat))&&(pt.lon<(xj-xi)*(pt.lat-yi)/((yj-yi)||1e-12)+xi))yes=!yes}return yes}
+function catches(){const a=[];qsa("#radiusChecks input:checked").forEach(x=>a.push({label:`Radius ${x.dataset.r} km`,type:"r",v:+x.dataset.r}));Object.keys(S.drivePoly).map(Number).sort((a,b)=>a-b).forEach(m=>a.push({label:`Time Span ${m} min`,type:"d",v:m}));return a}
+function refreshSummary(){const b=$("summaryBody");if(!S.pop.length){b.innerHTML='<tr><td colspan="3" style="text-align:center;color:#94a3b8">ยังไม่มี POP</td></tr>';return}b.innerHTML="";for(const c of catches()){let pop=0,house=0,has=false;for(const p of S.pop){const ok=c.type==="r"?hav(S.site,p)<=c.v:inside(p,S.drivePoly[c.v]||[]);if(ok){pop+=p.pop;if(p.house!=null){house+=p.house;has=true}}}const tr=document.createElement("tr");tr.innerHTML=`<td>${c.label}</td><td>${fmt(pop)}</td><td>${has?fmt(house):"—"}</td>`;b.appendChild(tr)}}
+
+$("connectBtn").onclick=connect;$("searchBtn").onclick=search;$("siteSearch").onkeydown=e=>{if(e.key==="Enter")search()};
+$("setSiteBtn").onclick=()=>setSite(+$("lat").value,+$("lon").value,$("siteName").value,true);
+$("centerSiteBtn").onclick=()=>{if(S.map){const p=S.map.location();setSite(p.lat,p.lon,$("siteName").value,false)}};
+$("goSiteBtn").onclick=$("siteBtn").onclick=()=>{if(S.map){S.map.location({lat:S.site.lat,lon:S.site.lon});S.map.zoom(12)}};
+qsa("#radiusChecks input").forEach(x=>x.onchange=()=>{drawRadius();refreshSummary()});
+$("calcDriveBtn").onclick=calcDrive;$("trafficChk").onchange=e=>traffic(e.target.checked);
+$("zoomIn").onclick=()=>S.map&&S.map.zoom(+S.map.zoom()+1);$("zoomOut").onclick=()=>S.map&&S.map.zoom(+S.map.zoom()-1);
+$("importPopBtn").onclick=()=>$("popFile").click();
+$("popFile").onchange=async e=>{const f=e.target.files&&e.target.files[0];if(f)try{await importPop(f)}catch(err){status("popStatus","Import ไม่สำเร็จ: "+err.message,"bad")}e.target.value=""};
+$("clearPopBtn").onclick=async()=>{S.pop=[];S.popSource="";await dbDel("pop");updatePopUI();refreshSummary();status("popStatus","ล้างข้อมูล POP แล้ว","ok")};
+qsa(".quick button").forEach(b=>b.onclick=()=>$(b.dataset.go).scrollIntoView({behavior:"smooth",block:"start"}));
+
+(async function boot(){
+  const k=localStorage.getItem("longdoKey");if(k)$("apiKey").value=k;
+  try{const saved=await dbGet("pop");if(saved&&Array.isArray(saved.points)){S.pop=saved.points;S.popSource=saved.source||"Local cache";updatePopUI();refreshSummary();status("popStatus",`โหลด POP จาก Tablet แล้ว ${fmt(S.pop.length)} จุด`,"ok")}}catch(e){}
+  if("serviceWorker" in navigator && location.protocol.startsWith("http"))navigator.serviceWorker.register("./sw.js").catch(()=>{});
+})();
+})();
+</script>
+</body>
+</html>
